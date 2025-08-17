@@ -1,0 +1,30 @@
+name: Simple Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: List files
+      run: |
+        ls -la
+        echo "Working directory:"
+        pwd
+        echo "Contents of automation_framework:"
+        ls -la automation_framework/ || echo "automation_framework directory not found"
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Test Python installation
+      run: |
+        python --version
+        pip --version
