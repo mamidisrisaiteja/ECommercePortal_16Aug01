@@ -1,0 +1,103 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  pre-release-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🛎️ Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+        
+    - name: 📦 Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r automation_framework/requirements.txt
+        
+    - name: 🎭 Install Playwright Browsers
+      run: |
+        playwright install
+        playwright install-deps
+        
+    - name: 🧪 Run Full Test Suite
+      working-directory: automation_framework
+      run: |
+        pytest tests/ \
+          --browser=chromium \
+          --headed=false \
+          --html=reports/release-report.html \
+          --self-contained-html \
+          --alluredir=reports/allure-results \
+          -v
+      env:
+        BASE_URL: https://www.saucedemo.com
+        HEADLESS: true
+
+  create-release:
+    needs: pre-release-tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🛎️ Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: 📝 Generate Release Notes
+      run: |
+        echo "## 🚀 Release Notes" > release-notes.md
+        echo "" >> release-notes.md
+        echo "### ✨ Features:" >> release-notes.md
+        echo "- Authentication test automation (TC_AUTH_01, TC_AUTH_02)" >> release-notes.md
+        echo "- Page Object Model implementation" >> release-notes.md
+        echo "- BDD/Cucumber integration with pytest-bdd" >> release-notes.md
+        echo "- Cross-browser testing (Chromium, Firefox, WebKit)" >> release-notes.md
+        echo "- Comprehensive reporting (HTML, Allure)" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "### 🔧 Technical Stack:" >> release-notes.md
+        echo "- Python 3.9+" >> release-notes.md
+        echo "- Playwright for browser automation" >> release-notes.md
+        echo "- Pytest for test execution" >> release-notes.md
+        echo "- Pytest-BDD for Cucumber integration" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "### 🧪 Test Cases:" >> release-notes.md
+        echo "- **TC_AUTH_01**: Login with valid credentials" >> release-notes.md
+        echo "- **TC_AUTH_02**: Login with invalid credentials" >> release-notes.md
+        
+    - name: 🏷️ Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: ECommercePortal Test Framework ${{ github.ref }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: false
+        
+    - name: 📦 Create Framework Archive
+      run: |
+        cd automation_framework
+        zip -r ../ecommerce-test-framework.zip . -x "reports/*" "*.pyc" "__pycache__/*"
+        
+    - name: 📦 Upload Test Framework Archive
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ecommerce-test-framework.zip
+        asset_name: ecommerce-test-framework.zip
+        asset_content_type: application/zip
