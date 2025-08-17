@@ -65,11 +65,11 @@ jobs:
         TEST_ENV: 'default'
       run: |
         pytest -v \
-          --browser=chromium \
           -m "auth and smoke" \
           --alluredir=reports/allure-results \
           --html=reports/smoke_report.html \
-          --self-contained-html
+          --self-contained-html \
+          tests/
     
     - name: Generate Allure Report
       if: always()
